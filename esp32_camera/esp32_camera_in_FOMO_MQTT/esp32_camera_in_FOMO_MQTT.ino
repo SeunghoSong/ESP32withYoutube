@@ -43,7 +43,7 @@ const uint16_t MQTT_PORT  = 1883;
 const char* MQTT_USER     = "YOUR_MQTT_USERNAME";
 const char* MQTT_PASSWORD = "YOUR_MQTT_PASSWORD";
 const char* MQTT_CLIENT_ID = "xiao_esp32s3_fomo";
-const char* MQTT_TOPIC     = "esp32/fomo/detections";
+const char* MQTT_TOPIC     = "zerotouch/cam01/face";
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -207,6 +207,7 @@ void loop()
 
 #if EI_CLASSIFIER_OBJECT_DETECTION == 1
     ei_printf("Object detection bounding boxes:\r\n");
+    uint32_t face_count = 0;
     for (uint32_t i = 0; i < result.bounding_boxes_count; i++) {
         ei_impulse_result_bounding_box_t bb = result.bounding_boxes[i];
         if (bb.value == 0) {
@@ -220,16 +221,21 @@ void loop()
                 bb.width,
                 bb.height);
 
-        // MQTT publish: "label:confidence" 형식 (예: "person:0.87342")
-        char payload[64];
-        snprintf(payload, sizeof(payload), "%s:%.5f", bb.label, bb.value);
+        face_count++;
+    }
 
-        if (mqttClient.connected()) {
-            mqttClient.publish(MQTT_TOPIC, payload);
-            ei_printf("  -> MQTT published [%s] %s\r\n", MQTT_TOPIC, payload);
-        } else {
-            ei_printf("  -> MQTT publish skipped (not connected)\r\n");
-        }
+    // MQTT publish (zerotouch/cam01/face 규약): {"detected":1,"face":2,"timestamp":123}
+    bool detected = (face_count > 0);
+    char payload[64];
+    snprintf(payload, sizeof(payload),
+             "{\"detected\":%d,\"face\":%lu,\"timestamp\":%lu}",
+             detected ? 1 : 0, (unsigned long)face_count, (unsigned long)(millis() / 1000));
+
+    if (mqttClient.connected()) {
+        mqttClient.publish(MQTT_TOPIC, payload, true);   // retain true
+        ei_printf("  -> MQTT published [%s] %s\r\n", MQTT_TOPIC, payload);
+    } else {
+        ei_printf("  -> MQTT publish skipped (not connected)\r\n");
     }
 
     // Print the prediction results (classification)
@@ -446,10 +452,13 @@ void reconnectMQTT(void) {
     int retry = 0;
     const int MAX_RETRY = 3;
 
+    const char* lwt = "{\"detected\":0,\"face\":0}";
+
     while (!mqttClient.connected() && retry < MAX_RETRY) {
         Serial.printf("Attempting MQTT connection to %s:%d ... ", MQTT_BROKER, MQTT_PORT);
 
-        if (mqttClient.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASSWORD)) {
+        if (mqttClient.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASSWORD,
+                                MQTT_TOPIC, 1, true, lwt)) {
             Serial.println("connected");
         } else {
             Serial.printf("failed, rc=%d, retry in 2s\n", mqttClient.state());
