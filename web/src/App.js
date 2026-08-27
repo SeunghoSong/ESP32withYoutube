@@ -29,9 +29,17 @@ export default function App() {
     client.on("error", () => setStatus("error"));
     
     client.on("message", (topic, payload) => {
-      const count = parseInt(payload.toString(), 10);
-      if (!isNaN(count)) {
-        setFaceCount(count);
+      try {
+        const data = JSON.parse(payload.toString());
+        if (data) {
+          if (data.detected === 1 && typeof data.face === 'number') {
+            setFaceCount(data.face);
+          } else {
+            setFaceCount(0);
+          }
+        }
+      } catch (err) {
+        console.error("MQTT Payload parse error:", err);
       }
     });
 
