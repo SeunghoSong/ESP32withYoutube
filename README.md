@@ -1,0 +1,10 @@
+# ESP32withYoutube
+
+Zero-Touch Media Control 시스템 (ESP32-CAM ↔ MQTT ↔ 웹 클라이언트)
+
+## Docker 컨테이너
+
+| 컨테이너 이름 | 포트 | 설명 |
+|---|---|---|
+| zerotouch-mosquitto | 1883, 9001 | MQTT 메시지 브로커. 1883은 ESP32-CAM 등 디바이스용 TCP, 9001은 웹 브라우저용 WebSocket |
+| zerotouch-web | 3000 | React 기반 프론트엔드 웹 서버 (Nginx로 정적 파일 서빙) |
