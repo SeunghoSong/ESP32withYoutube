@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: zerotouch-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"   # MQTT (디바이스용 TCP)
+      - "9001:9001"   # MQTT over WebSocket (웹 브라우저용)
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    networks:
+      - zerotouch-net
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: zerotouch-web
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_MQTT_BROKER_URL=ws://localhost:9001
+      - REACT_APP_MQTT_TOPIC=zerotouch/cam01/face
+    depends_on:
+      - mosquitto
+    networks:
+      - zerotouch-net
+
+networks:
+  zerotouch-net:
+    driver: bridge

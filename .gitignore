@@ -1,0 +1,7 @@
+mosquitto/data/*
+!mosquitto/data/.gitkeep
+mosquitto/log/*
+!mosquitto/log/.gitkeep
+
+web/node_modules/
+web/build/
